@@ -26,7 +26,7 @@ npm run dev
 ```
 
 - **Frontend:** http://localhost:5173
-- **Backend API:** http://localhost:3001
+- **Backend API:** https://eshi-app.onrender.com
 
 ## Project Structure
 
