@@ -57,6 +57,20 @@ export async function updateMeal(id, data) {
   return res.json();
 }
 
+export async function generateMealPlanAI() {
+  try {
+    const res = await fetch(`${API}/meal-plan/generate-ai`, { method: 'POST' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(body.error || `AI generation failed (${res.status})`);
+    }
+    return body;
+  } catch (e) {
+    if (e.message.startsWith('AI generation') || e.message.startsWith('ANTHROPIC_API_KEY')) throw e;
+    throw new Error('Cannot connect to backend. Please run npm run dev and ensure the server starts.');
+  }
+}
+
 export async function generateMealPlan() {
   try {
     const res = await fetch(`${API}/meal-plan/generate`, { method: 'POST' });

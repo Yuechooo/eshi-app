@@ -9,6 +9,9 @@ import SectionTitle from '../components/ui/SectionTitle'
 const BODY_OPTIONS = ['bodyWarm', 'bodyCool', 'bodyBalanced', 'bodyQiDeficient', 'bodyDamp', 'bodyOther']
 const SEASONAL_OPTIONS = ['seasonalSpring', 'seasonalSummer', 'seasonalAutumn', 'seasonalWinter', 'seasonalNone']
 const GOAL_OPTIONS = ['goalImmunity', 'goalWeight', 'goalEnergy', 'goalSleep', 'goalDigestion', 'goalStress', 'goalOther']
+const SCHEDULE_INTENSITY_OPTIONS = ['scheduleIntensityLight', 'scheduleIntensityModerate', 'scheduleIntensityHeavy']
+const DAY_TAG_OPTIONS = ['dayTagBusy', 'dayTagLowEnergy', 'dayTagWorkout', 'dayTagLateNight']
+const DAY_TAG_KEYS = ['busy', 'lowEnergy', 'workout', 'lateNight']
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
@@ -21,7 +24,9 @@ const EMPTY_FORM = {
   dietary_preference: '',
   allergies: '',
   notes: '',
-  busy_days: []
+  busy_days: [],
+  schedule_intensity: '',
+  daily_context: {}
 }
 
 function formatValue(t, key, value, opts) {
@@ -79,6 +84,8 @@ export default function ProfilePage() {
       .then(p => {
         const goals = (p.health_goal || '').split(',').map(g => g.trim()).filter(Boolean)
         const busy = (p.busy_days || '').split(',').map(d => d.trim().toLowerCase()).filter(d => DAYS.includes(d))
+        let dailyCtx = {}
+        try { dailyCtx = JSON.parse(p.daily_context || '{}') } catch (_) {}
         setForm({
           display_name: p.display_name || '',
           body_condition: p.body_condition || '',
@@ -88,7 +95,9 @@ export default function ProfilePage() {
           dietary_preference: p.dietary_preference || '',
           allergies: p.allergies || '',
           notes: p.notes || '',
-          busy_days: busy
+          busy_days: busy,
+          schedule_intensity: p.schedule_intensity || '',
+          daily_context: dailyCtx
         })
       })
       .catch(() => {})
@@ -119,7 +128,8 @@ export default function ProfilePage() {
         ...form,
         birth_year: birthYear,
         health_goal: healthGoals.join(','),
-        busy_days: busyDays.join(',')
+        busy_days: busyDays.join(','),
+        daily_context: JSON.stringify(form.daily_context || {})
       })
       setForm(f => ({
         ...f,
@@ -303,6 +313,65 @@ export default function ProfilePage() {
                       {t(d)}
                     </button>
                   ))}
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <h3 className="mb-1 font-display text-base font-semibold text-ink">{t('profileScheduleContext')}</h3>
+              <p className="mb-4 text-xs leading-relaxed text-muted sm:text-sm">{t('profileScheduleContextDesc')}</p>
+              <div className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-ink sm:text-sm">{t('scheduleIntensity')}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SCHEDULE_INTENSITY_OPTIONS.map(key => (
+                      <button
+                        key={key}
+                        type="button"
+                        className={tagClass(form.schedule_intensity === key)}
+                        onClick={() => setField('schedule_intensity', form.schedule_intensity === key ? '' : key)}
+                      >
+                        {t(key)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-ink sm:text-sm">{t('dailyContextLabel')}</label>
+                  <div className="space-y-2">
+                    {DAYS.map(day => {
+                      const dayTags = form.daily_context?.[day] || []
+                      return (
+                        <div key={day} className="flex flex-wrap items-center gap-2">
+                          <span className="w-12 shrink-0 text-xs text-muted">{t(day)}</span>
+                          {DAY_TAG_OPTIONS.map((labelKey, i) => {
+                            const tagKey = DAY_TAG_KEYS[i]
+                            const active = dayTags.includes(tagKey)
+                            return (
+                              <button
+                                key={tagKey}
+                                type="button"
+                                className={[
+                                  'rounded-full border px-2.5 py-1 text-[0.7rem] font-medium transition-colors sm:text-xs',
+                                  active
+                                    ? 'border-primary bg-primary text-surface'
+                                    : 'border-border bg-bg text-muted hover:border-primary hover:bg-primary-soft hover:text-primary',
+                                ].join(' ')}
+                                onClick={() => {
+                                  const next = active
+                                    ? dayTags.filter(t => t !== tagKey)
+                                    : [...dayTags, tagKey]
+                                  setField('daily_context', { ...form.daily_context, [day]: next })
+                                }}
+                              >
+                                {t(labelKey)}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </Card>

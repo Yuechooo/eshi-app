@@ -52,6 +52,13 @@ export function initSchema() {
   try { db.exec(`ALTER TABLE profile ADD COLUMN allergies TEXT`); } catch (_) {}
   try { db.exec(`ALTER TABLE profile ADD COLUMN notes TEXT`); } catch (_) {}
   try { db.exec(`ALTER TABLE profile ADD COLUMN busy_days TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE profile ADD COLUMN schedule_intensity TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE profile ADD COLUMN daily_context TEXT`); } catch (_) {}
+
+  try { db.exec(`ALTER TABLE meals ADD COLUMN cooking_time INTEGER`); } catch (_) {}
+  try { db.exec(`ALTER TABLE meals ADD COLUMN difficulty TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE meals ADD COLUMN tags TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE meals ADD COLUMN why_recommended TEXT`); } catch (_) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS grocery_overrides (

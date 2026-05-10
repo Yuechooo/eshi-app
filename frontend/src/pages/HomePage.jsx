@@ -11,6 +11,7 @@ import SeasonalWellnessBlock from '../components/home/SeasonalWellnessBlock'
 import IngredientsFocusCard from '../components/home/IngredientsFocusCard'
 import AvoidTodayCard from '../components/home/AvoidTodayCard'
 import HomeRitualStrip from '../components/home/HomeRitualStrip'
+import CommunityFeed from '../components/home/CommunityFeed'
 
 function getDaysOffset(from, to) {
   const a = new Date(from.getFullYear(), from.getMonth(), from.getDate())
@@ -117,6 +118,10 @@ export default function HomePage() {
         <SectionTitle className="mb-3 sm:mb-4">{t('quickActions')}</SectionTitle>
         <QuickActionsCard />
       </section>
+
+      <div className="pt-2">
+        <CommunityFeed />
+      </div>
     </section>
   )
 }
