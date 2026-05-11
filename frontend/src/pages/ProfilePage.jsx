@@ -2,18 +2,126 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getProfile, updateProfile, deleteProfile } from '../api'
 import { useLanguage } from '../hooks/useLanguage'
+import { useScheduleContext } from '../hooks/useScheduleContext'
+import { useCommunity } from '../contexts/CommunityContext'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import SectionTitle from '../components/ui/SectionTitle'
+
+function ProfilePostCard({ post, onDelete, t, lang }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const title = lang === 'zh' ? post.titleZh : post.titleEn
+  const text = lang === 'zh' ? (post.textZh || '') : (post.textEn || '')
+  const time = lang === 'zh' ? post.timeZh : post.timeEn
+  const commentCount = post.comments?.length ?? 0
+  const hasImage = post.imageUrl && !imgFailed
+  const hasVideo = post.mediaType === 'video' && post.videoUrl
+
+  return (
+    <>
+      <div className="rounded-2xl border border-white/90 bg-surface/80 shadow-card overflow-hidden">
+        {(hasVideo || hasImage) && (
+          <div className="w-full overflow-hidden" style={{ height: 160 }}>
+            {hasVideo ? (
+              <video src={post.videoUrl} className="w-full h-full object-cover" muted playsInline />
+            ) : (
+              <img
+                src={post.imageUrl}
+                alt={title}
+                className="w-full h-full object-cover"
+                onError={() => setImgFailed(true)}
+              />
+            )}
+          </div>
+        )}
+        <div className="p-4">
+          <div className="flex items-start gap-2 mb-1.5">
+            <h4 className="flex-1 font-semibold text-ink text-sm leading-snug">{title}</h4>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label={t('communityDeletePostLabel')}
+              className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted/50 hover:text-rose-400 hover:bg-rose-50 transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+            </button>
+          </div>
+          {text && (
+            <p className="text-xs text-muted leading-relaxed line-clamp-2 mb-2">{text}</p>
+          )}
+          {post.tags && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2.5">
+              {post.tags.map(tag => (
+                <span key={tag} className="text-[0.65rem] px-2 py-0.5 rounded-full border border-border bg-bg text-muted font-medium">
+                  {t(tag)}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-[0.7rem] text-muted/70">
+            <span>{time}</span>
+            {commentCount > 0 && (
+              <>
+                <span className="opacity-50">·</span>
+                <span>{commentCount} {lang === 'zh' ? '条评论' : (commentCount === 1 ? 'comment' : 'comments')}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/20 backdrop-blur-[2px]" onClick={() => setConfirmDelete(false)} />
+          <div className="relative w-full max-w-[17rem] rounded-[1.5rem] border border-white/90 bg-bg shadow-popover ring-1 ring-ink/[0.04] px-6 py-6">
+            <p className="text-sm font-semibold text-ink text-center mb-5 leading-snug">
+              {t('communityDeleteConfirm')}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2.5 rounded-2xl border border-ink/10 text-sm text-muted font-medium hover:text-ink transition-colors"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setConfirmDelete(false); onDelete(post.id) }}
+                className="flex-1 py-2.5 rounded-2xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 active:bg-rose-700 transition-colors"
+              >
+                {t('communityDeleteBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
 const BODY_OPTIONS = ['bodyWarm', 'bodyCool', 'bodyBalanced', 'bodyQiDeficient', 'bodyDamp', 'bodyOther']
 const SEASONAL_OPTIONS = ['seasonalSpring', 'seasonalSummer', 'seasonalAutumn', 'seasonalWinter', 'seasonalNone']
 const GOAL_OPTIONS = ['goalImmunity', 'goalWeight', 'goalEnergy', 'goalSleep', 'goalDigestion', 'goalStress', 'goalOther']
 const SCHEDULE_INTENSITY_OPTIONS = ['scheduleIntensityLight', 'scheduleIntensityModerate', 'scheduleIntensityHeavy']
-const DAY_TAG_OPTIONS = ['dayTagBusy', 'dayTagLowEnergy', 'dayTagWorkout', 'dayTagLateNight']
-const DAY_TAG_KEYS = ['busy', 'lowEnergy', 'workout', 'lateNight']
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+const SCHED_LEVELS = ['light', 'normal', 'busy', 'very-busy']
+const SCHED_LEVEL_KEYS = { light: 'schedLevelLight', normal: 'schedLevelNormal', busy: 'schedLevelBusy', 'very-busy': 'schedLevelVeryBusy' }
+const SCHED_TAGS = [
+  { key: 'workout',      labelKey: 'dayTagWorkout' },
+  { key: 'lateNight',   labelKey: 'dayTagLateNight' },
+  { key: 'lowEnergy',   labelKey: 'dayTagLowEnergy' },
+  { key: 'socialDinner', labelKey: 'dayTagSocialDinner' },
+]
 
 const EMPTY_FORM = {
   display_name: '',
@@ -44,8 +152,10 @@ const tagClass = (on) =>
   ].join(' ')
 
 export default function ProfilePage() {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const location = useLocation()
+  const { schedule, setDayLevel, toggleDayTag } = useScheduleContext()
+  const { userPosts, deletePost } = useCommunity()
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -297,30 +407,25 @@ export default function ProfilePage() {
             <Card>
               <h3 className="mb-1 font-display text-base font-semibold text-ink">{t('profileSchedule')}</h3>
               <p className="mb-4 text-xs leading-relaxed text-muted sm:text-sm">{t('profileScheduleDesc')}</p>
-              <div>
-                <label className="mb-2 block text-xs font-medium text-ink sm:text-sm">{t('busyDays')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {DAYS.map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      className={tagClass(busyDays.includes(d))}
-                      onClick={() => {
-                        const next = busyDays.includes(d) ? busyDays.filter(x => x !== d) : [...busyDays, d]
-                        setField('busy_days', next)
-                      }}
-                    >
-                      {t(d)}
-                    </button>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-ink sm:text-sm">{t('busyDays')}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {DAYS.map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        className={tagClass(busyDays.includes(d))}
+                        onClick={() => {
+                          const next = busyDays.includes(d) ? busyDays.filter(x => x !== d) : [...busyDays, d]
+                          setField('busy_days', next)
+                        }}
+                      >
+                        {t(d)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="mb-1 font-display text-base font-semibold text-ink">{t('profileScheduleContext')}</h3>
-              <p className="mb-4 text-xs leading-relaxed text-muted sm:text-sm">{t('profileScheduleContextDesc')}</p>
-              <div className="space-y-5">
                 <div>
                   <label className="mb-2 block text-xs font-medium text-ink sm:text-sm">{t('scheduleIntensity')}</label>
                   <div className="flex flex-wrap gap-2">
@@ -336,43 +441,71 @@ export default function ProfilePage() {
                     ))}
                   </div>
                 </div>
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-ink sm:text-sm">{t('dailyContextLabel')}</label>
-                  <div className="space-y-2">
-                    {DAYS.map(day => {
-                      const dayTags = form.daily_context?.[day] || []
-                      return (
-                        <div key={day} className="flex flex-wrap items-center gap-2">
-                          <span className="w-12 shrink-0 text-xs text-muted">{t(day)}</span>
-                          {DAY_TAG_OPTIONS.map((labelKey, i) => {
-                            const tagKey = DAY_TAG_KEYS[i]
-                            const active = dayTags.includes(tagKey)
-                            return (
-                              <button
-                                key={tagKey}
-                                type="button"
-                                className={[
-                                  'rounded-full border px-2.5 py-1 text-[0.7rem] font-medium transition-colors sm:text-xs',
-                                  active
-                                    ? 'border-primary bg-primary text-surface'
-                                    : 'border-border bg-bg text-muted hover:border-primary hover:bg-primary-soft hover:text-primary',
-                                ].join(' ')}
-                                onClick={() => {
-                                  const next = active
-                                    ? dayTags.filter(t => t !== tagKey)
-                                    : [...dayTags, tagKey]
-                                  setField('daily_context', { ...form.daily_context, [day]: next })
-                                }}
-                              >
-                                {t(labelKey)}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+              </div>
+            </Card>
+
+            {/* Weekly Schedule Context — per-day level + tags, stored locally */}
+            <Card>
+              <h3 className="mb-1 font-display text-base font-semibold text-ink">{t('profileScheduleContext')}</h3>
+              <p className="mb-3 text-xs leading-relaxed text-muted sm:text-sm">{t('profileScheduleContextDesc')}</p>
+              <p className="mb-4 text-[0.7rem] text-muted/70">{t('schedPerDayNote')}</p>
+              <div className="space-y-3">
+                {DAYS.map(day => {
+                  const dayCtx = schedule[day] || { level: 'normal', tags: [] }
+                  const levelColor = {
+                    light:      'border-emerald-300 bg-emerald-50 text-emerald-700',
+                    normal:     'border-primary bg-primary text-surface',
+                    busy:       'border-amber-400 bg-amber-100 text-amber-800',
+                    'very-busy':'border-orange-400 bg-orange-100 text-orange-800',
+                  }
+                  return (
+                    <div key={day} className="rounded-xl border border-border bg-bg p-3">
+                      <p className="mb-2 text-xs font-semibold text-ink">{t(day)}</p>
+                      {/* Level selector */}
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {SCHED_LEVELS.map(lv => {
+                          const active = dayCtx.level === lv
+                          return (
+                            <button
+                              key={lv}
+                              type="button"
+                              className={[
+                                'rounded-full border px-2.5 py-1 text-[0.7rem] font-medium transition-colors',
+                                active
+                                  ? levelColor[lv]
+                                  : 'border-border bg-surface text-muted hover:border-primary/40 hover:text-primary',
+                              ].join(' ')}
+                              onClick={() => setDayLevel(day, lv)}
+                            >
+                              {t(SCHED_LEVEL_KEYS[lv])}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {/* Tag selector */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {SCHED_TAGS.map(({ key: tagKey, labelKey }) => {
+                          const active = dayCtx.tags.includes(tagKey)
+                          return (
+                            <button
+                              key={tagKey}
+                              type="button"
+                              className={[
+                                'rounded-full border px-2.5 py-1 text-[0.65rem] font-medium transition-colors',
+                                active
+                                  ? 'border-primary/60 bg-primary-soft text-primary'
+                                  : 'border-border/60 bg-surface text-muted/70 hover:border-primary/30 hover:text-primary',
+                              ].join(' ')}
+                              onClick={() => toggleDayTag(day, tagKey)}
+                            >
+                              {t(labelKey)}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </Card>
 
@@ -521,6 +654,32 @@ export default function ProfilePage() {
           )}
         </>
       )}
+
+      {/* ── My Posts ───────────────────────────────────────────────────────── */}
+      <div className="mt-10">
+        <div className="mb-4">
+          <h2 className="font-display text-xl font-semibold text-ink">{t('myPostsTitle')}</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{t('myPostsSubtitle')}</p>
+        </div>
+        {userPosts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-surface/60 px-6 py-10 text-center">
+            <p className="mb-1 text-sm font-medium text-muted">{t('myPostsEmpty')}</p>
+            <p className="text-xs text-muted/70">{t('myPostsEmptySuggestion')}</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {userPosts.map(post => (
+              <ProfilePostCard
+                key={post.id}
+                post={post}
+                onDelete={deletePost}
+                t={t}
+                lang={lang}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   )
 }

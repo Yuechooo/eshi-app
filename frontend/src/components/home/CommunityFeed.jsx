@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useCommunity } from '../../contexts/CommunityContext'
 
 const MOCK_POSTS = [
   {
@@ -13,7 +14,7 @@ const MOCK_POSTS = [
     locationEn: 'Shanghai',
     locationZh: '上海',
     wellnessTagKey: 'tagWarming',
-    imageUrl: 'https://source.unsplash.com/600x400/?pumpkin+porridge+millet+bowl+asian&sig=501',
+    imageUrl: 'https://images.unsplash.com/photo-1766761562530-c8dd12c96d9a?auto=format&fit=crop&w=600&q=85',
     mediaType: 'image',
     titleEn: 'Pumpkin Millet Porridge',
     titleZh: '南瓜小米粥',
@@ -35,7 +36,7 @@ const MOCK_POSTS = [
     locationEn: null,
     locationZh: null,
     wellnessTagKey: 'tagLight',
-    imageUrl: 'https://source.unsplash.com/600x400/?steamed+egg+custard+tofu+green+vegetable&sig=502',
+    imageUrl: 'https://images.unsplash.com/photo-1770966666356-3f022a79b8ea?auto=format&fit=crop&w=600&q=85',
     mediaType: 'image',
     titleEn: 'Steamed Egg with Greens',
     titleZh: '蒸蛋配时蔬',
@@ -58,7 +59,7 @@ const MOCK_POSTS = [
     locationEn: 'Rainy evening',
     locationZh: '雨天傍晚',
     wellnessTagKey: 'tagNourishing',
-    imageUrl: 'https://source.unsplash.com/600x400/?chicken+soup+ginger+broth+bowl+asian&sig=503',
+    imageUrl: 'https://images.unsplash.com/photo-1672667509988-baade9ade083?auto=format&fit=crop&w=600&q=85',
     mediaType: 'image',
     titleEn: 'Ginger Chicken Soup on a Rainy Day',
     titleZh: '雨天姜汁鸡汤',
@@ -78,7 +79,7 @@ const MOCK_POSTS = [
     locationEn: null,
     locationZh: null,
     wellnessTagKey: 'tagProteinRich',
-    imageUrl: 'https://source.unsplash.com/600x400/?tofu+bowl+healthy+asian+vegetables+sesame&sig=504',
+    imageUrl: 'https://images.unsplash.com/photo-1765295218809-784d6c2fe39c?auto=format&fit=crop&w=600&q=85',
     mediaType: 'image',
     titleEn: 'Post-Workout Tofu Bowl',
     titleZh: '运动后豆腐碗',
@@ -110,6 +111,46 @@ const COMMUNITY_TAGS = [
   'tagWarming', 'tagLight', 'tagQuick', 'tagNourishing',
   'tagProteinRich', 'tagSeasonal', 'tagBusyDay', 'tagWorkoutSupport',
 ]
+
+function TrashIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  )
+}
+
+function DeleteConfirmModal({ onConfirm, onCancel, t }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink/20 backdrop-blur-[2px]" onClick={onCancel} />
+      <div className="relative w-full max-w-[17rem] rounded-[1.5rem] border border-white/90 bg-bg shadow-popover ring-1 ring-ink/[0.04] px-6 py-6">
+        <p className="text-sm font-semibold text-ink text-center mb-5 leading-snug">
+          {t('communityDeleteConfirm')}
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-2xl border border-ink/10 text-sm text-muted font-medium hover:text-ink transition-colors"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-2xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 active:bg-rose-700 transition-colors"
+          >
+            {t('communityDeleteBtn')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function UserAvatar({ initial, color, size = 'w-9 h-9 text-sm' }) {
   return (
@@ -150,10 +191,11 @@ function PostImage({ post, title }) {
   )
 }
 
-function PostCard({ post }) {
+function PostCard({ post, onDelete }) {
   const { t, lang } = useLanguage()
   const [comments, setComments] = useState(post.comments)
   const [commentInput, setCommentInput] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const name = lang === 'zh' ? post.userNameZh : post.userNameEn
   const time = lang === 'zh' ? post.timeZh : post.timeEn
@@ -176,6 +218,7 @@ function PostCard({ post }) {
   }
 
   return (
+  <>
     <article className="rounded-3xl border border-white/90 bg-surface/80 shadow-card overflow-hidden">
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <UserAvatar initial={post.userInitial} color={post.userColor} />
@@ -195,6 +238,17 @@ function PostCard({ post }) {
           <span className={`text-xs px-2.5 py-1 rounded-full border font-medium flex-shrink-0 ${TAG_COLOR[post.wellnessTagKey] || 'bg-gray-50 text-gray-500 border-gray-100'}`}>
             {t(post.wellnessTagKey)}
           </span>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            aria-label={t('communityDeletePostLabel')}
+            title={t('communityDeletePostLabel')}
+            className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted/50 hover:text-rose-400 hover:bg-rose-50 transition-colors ml-0.5"
+          >
+            <TrashIcon />
+          </button>
         )}
       </div>
 
@@ -262,6 +316,15 @@ function PostCard({ post }) {
         </>
       )}
     </article>
+
+    {showDeleteConfirm && (
+      <DeleteConfirmModal
+        t={t}
+        onConfirm={() => { setShowDeleteConfirm(false); onDelete(post.id) }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+    )}
+  </>
   )
 }
 
@@ -292,6 +355,7 @@ function CreatePostModal({ onClose, onPublish }) {
     if (!title.trim()) return
     onPublish({
       id: Date.now(),
+      isUserPost: true,
       userNameEn: 'You',
       userNameZh: '你',
       userInitial: 'Y',
@@ -441,14 +505,10 @@ function CreatePostModal({ onClose, onPublish }) {
 
 export default function CommunityFeed() {
   const { t } = useLanguage()
-  const [userPosts, setUserPosts] = useState([])
+  const { userPosts, addPost, deletePost } = useCommunity()
   const [showModal, setShowModal] = useState(false)
 
   const allPosts = [...userPosts, ...MOCK_POSTS]
-
-  const handlePublish = (post) => {
-    setUserPosts(prev => [post, ...prev])
-  }
 
   return (
     <>
@@ -464,7 +524,7 @@ export default function CommunityFeed() {
 
         <div className="space-y-5">
           {allPosts.map(post => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} onDelete={post.isUserPost ? deletePost : undefined} />
           ))}
         </div>
       </section>
@@ -484,7 +544,7 @@ export default function CommunityFeed() {
       {showModal && (
         <CreatePostModal
           onClose={() => setShowModal(false)}
-          onPublish={handlePublish}
+          onPublish={addPost}
         />
       )}
     </>

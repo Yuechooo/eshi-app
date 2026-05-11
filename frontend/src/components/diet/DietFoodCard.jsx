@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
+import { FALLBACK_IMG } from '../../data/foodImages'
 
 export default function DietFoodCard({ food }) {
   const { lang } = useLanguage()
@@ -22,6 +23,7 @@ export default function DietFoodCard({ food }) {
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
           loading="lazy"
           decoding="async"
+          onError={e => { e.currentTarget.src = FALLBACK_IMG; e.currentTarget.onerror = null }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/25 via-transparent to-transparent opacity-80" />
       </div>

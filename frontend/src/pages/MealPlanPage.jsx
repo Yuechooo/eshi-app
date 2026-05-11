@@ -5,156 +5,14 @@ import {
 } from '../api'
 import { ingredientNamesZh } from '../i18n'
 import { useLanguage } from '../hooks/useLanguage'
+import { useScheduleContext } from '../hooks/useScheduleContext'
 import AddMealForm from '../components/AddMealForm'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import SectionTitle from '../components/ui/SectionTitle'
+import { FALLBACK_IMG, getMealImage } from '../data/foodImages'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-
-// ─── Food image system ─────────────────────────────────────────────────────────
-// All URLs point to verified Wikimedia Commons photos, matched by meal name.
-// Exact meal name → MEAL_IMAGE_MAP → keyword fallback → FALLBACK_IMG → gradient.
-
-// Neutral safe fallback: plain white rice porridge bowl
-const FALLBACK_IMG =
-  'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg'
-
-// Exact meal name → verified food photo. Every URL here has been confirmed to
-// show the correct food (verified via Wikimedia Commons file pages).
-const MEAL_IMAGE_MAP = {
-  // ── Chinese breakfast ──────────────────────────────────────────────────────
-  'Steamed Egg':
-    'https://upload.wikimedia.org/wikipedia/commons/4/46/Chinese_steamed_eggs_by_Kanko.jpg',
-  'Congee with Egg':
-    'https://upload.wikimedia.org/wikipedia/commons/4/4c/Century_egg_porridge_with_lean_meat_by_sfllaw_in_Montreal.jpg',
-  'Rice Porridge + Spinach':
-    'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg',
-  'Rice porridge + Banana':
-    'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg',
-  'Millet Porridge':
-    'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg',
-  'Pumpkin Porridge':
-    'https://upload.wikimedia.org/wikipedia/commons/f/fa/Pumpkin_Cream_Soup.jpg',
-
-  // ── Western breakfast ──────────────────────────────────────────────────────
-  'Toast + Eggs':
-    'https://commons.wikimedia.org/wiki/Special:FilePath/Scrambled_eggs_with_sausage_and_toast.jpg',
-  'Scrambled Eggs + Spinach':
-    'https://commons.wikimedia.org/wiki/Special:FilePath/ScrambledEggs_02.jpg',
-  'Yogurt + Fruit':
-    'https://commons.wikimedia.org/wiki/Special:FilePath/Strawberry_frozen_yogurt.jpg',
-
-  // ── Chinese lunch / dinner ─────────────────────────────────────────────────
-  'Braised Chicken + Vegetables':
-    'https://upload.wikimedia.org/wikipedia/commons/c/c2/Soy_Sauce_Chicken_in_Clay_Pot.JPG',
-  'Steamed Fish + Greens':
-    'https://upload.wikimedia.org/wikipedia/commons/9/95/CantoneseSteamedfish.jpg',
-  'Rice + Bone Broth Soup':
-    'https://upload.wikimedia.org/wikipedia/commons/c/c9/Southern_Chinese_style_chicken_soup_with_mushrooms_and_corn.jpg',
-  'Yam Rib Soup':
-    'https://upload.wikimedia.org/wikipedia/commons/c/c9/Southern_Chinese_style_chicken_soup_with_mushrooms_and_corn.jpg',
-  'Braised Beef with Root Vegetables':
-    'https://upload.wikimedia.org/wikipedia/commons/8/88/Braised_Ox_Cheek_in_Star_Anise_and_Soy_Sauce.jpg',
-  'Congee with Vegetables':
-    'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg',
-
-  // ── Western lunch / dinner ─────────────────────────────────────────────────
-  'Quick Stir-fry Chicken':
-    'https://upload.wikimedia.org/wikipedia/commons/6/6b/Stir_fry_%284354349209%29.jpg',
-  'Pasta with Butter':
-    'https://commons.wikimedia.org/wiki/Special:FilePath/Spaghetti_aglio_e_olio_by_Takeaway.jpg',
-  'Rice + Egg':
-    'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg',
-  'Sandwich + Salad':
-    'https://commons.wikimedia.org/wiki/Special:FilePath/Club_sandwich.jpg',
-  'Grilled Chicken Salad':
-    'https://commons.wikimedia.org/wiki/Special:FilePath/Caesar_salad_(1).jpg',
-  'Rice + Stir-fry Veggies':
-    'https://upload.wikimedia.org/wikipedia/commons/6/6b/Stir_fry_%284354349209%29.jpg',
-  'Omelette with Veggies':
-    'https://commons.wikimedia.org/wiki/Special:FilePath/Basic_omelette.jpg',
-
-  // ── Common AI-generated meal names ────────────────────────────────────────
-  'Ginger Chicken Soup':
-    'https://upload.wikimedia.org/wikipedia/commons/c/c9/Southern_Chinese_style_chicken_soup_with_mushrooms_and_corn.jpg',
-  'Spinach Egg Soup':
-    'https://upload.wikimedia.org/wikipedia/commons/9/98/Egg_drop_soup_%28%E8%9B%8B%E8%8A%B1%E6%B9%AF%29.jpg',
-  'Tofu Bowl':
-    'https://upload.wikimedia.org/wikipedia/commons/6/62/Douhua.jpg',
-  'Millet Congee':
-    'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg',
-  'Bone Broth Soup':
-    'https://upload.wikimedia.org/wikipedia/commons/c/c9/Southern_Chinese_style_chicken_soup_with_mushrooms_and_corn.jpg',
-  'Braised Pork Belly':
-    'https://upload.wikimedia.org/wikipedia/commons/a/a8/Red_braised_pork_belly.jpg',
-  'Red Braised Pork':
-    'https://upload.wikimedia.org/wikipedia/commons/a/a8/Red_braised_pork_belly.jpg',
-  'Mapo Tofu':
-    'https://upload.wikimedia.org/wikipedia/commons/6/6c/Mapo_tofu.JPG',
-  'Wonton Soup':
-    'https://upload.wikimedia.org/wikipedia/commons/4/41/Bowl_of_wonton_soup.JPG',
-  'Pork Rib Soup':
-    'https://upload.wikimedia.org/wikipedia/commons/c/c9/Southern_Chinese_style_chicken_soup_with_mushrooms_and_corn.jpg',
-}
-
-// Returns a verified image URL for the meal, falling back through keyword tiers.
-// For AI-generated names not in MEAL_IMAGE_MAP, keyword matching uses the same
-// verified Wikimedia URLs — never random photo IDs.
-function getMealImage(name) {
-  if (MEAL_IMAGE_MAP[name]) return MEAL_IMAGE_MAP[name]
-
-  const n = (name || '').toLowerCase()
-
-  if (n.includes('steamed egg') || n.includes('egg custard'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/4/46/Chinese_steamed_eggs_by_Kanko.jpg'
-  if (n.includes('congee') || n.includes('porridge') || n.includes('gruel'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg'
-  if (n.includes('pumpkin'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Pumpkin_Cream_Soup.jpg'
-  if (n.includes('steamed fish'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/9/95/CantoneseSteamedfish.jpg'
-  if (n.includes('braised chicken') || n.includes('soy chicken'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/c/c2/Soy_Sauce_Chicken_in_Clay_Pot.JPG'
-  if (n.includes('braised beef') || n.includes('beef stew') || n.includes('beef brisket'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/8/88/Braised_Ox_Cheek_in_Star_Anise_and_Soy_Sauce.jpg'
-  if (n.includes('pork rib') || n.includes('spareribs') || n.includes('rib soup'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/6/64/Wuxi_spareribs_sauce.jpg'
-  if (n.includes('braised pork') || n.includes('red braised') || n.includes('red-braised'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Red_braised_pork_belly.jpg'
-  if (n.includes('mapo tofu'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/6/6c/Mapo_tofu.JPG'
-  if (n.includes('tofu'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/6/62/Douhua.jpg'
-  if (n.includes('egg drop') || (n.includes('spinach') && n.includes('soup')))
-    return 'https://upload.wikimedia.org/wikipedia/commons/9/98/Egg_drop_soup_%28%E8%9B%8B%E8%8A%B1%E6%B9%AF%29.jpg'
-  if (n.includes('wonton') || n.includes('noodle') || n.includes('ramen'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/4/41/Bowl_of_wonton_soup.JPG'
-  if (n.includes('soup') || n.includes('broth') || n.includes('stew'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/c/c9/Southern_Chinese_style_chicken_soup_with_mushrooms_and_corn.jpg'
-  if (n.includes('stir') || n.includes('wok'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/6/6b/Stir_fry_%284354349209%29.jpg'
-  if (n.includes('fish') || n.includes('seafood') || n.includes('salmon') || n.includes('shrimp'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/9/95/CantoneseSteamedfish.jpg'
-  if (n.includes('chicken'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/c/c2/Soy_Sauce_Chicken_in_Clay_Pot.JPG'
-  if (n.includes('beef'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/8/88/Braised_Ox_Cheek_in_Star_Anise_and_Soy_Sauce.jpg'
-  if (n.includes('pork'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Red_braised_pork_belly.jpg'
-  if (n.includes('egg'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/4/46/Chinese_steamed_eggs_by_Kanko.jpg'
-  if (n.includes('salad') || n.includes('lettuce'))
-    return 'https://commons.wikimedia.org/wiki/Special:FilePath/Caesar_salad_(1).jpg'
-  if (n.includes('pasta') || n.includes('spaghetti'))
-    return 'https://commons.wikimedia.org/wiki/Special:FilePath/Spaghetti_aglio_e_olio_by_Takeaway.jpg'
-  if (n.includes('sandwich') || n.includes('toast') || n.includes('bread'))
-    return 'https://commons.wikimedia.org/wiki/Special:FilePath/Club_sandwich.jpg'
-  if (n.includes('rice'))
-    return 'https://upload.wikimedia.org/wikipedia/commons/5/58/Chinese_rice_congee.jpg'
-
-  return FALLBACK_IMG
-}
 
 const MEAL_LABEL_COLOR = {
   breakfast: 'text-amber-700',
@@ -510,9 +368,92 @@ function buildRuleSummary(profile, lang) {
   return parts.join(' ')
 }
 
+// ─── Schedule-aware helpers ────────────────────────────────────────────────────
+
+const SCHED_TAG_BADGE = {
+  workout:      { labelKey: 'schedBadgeWorkout',      cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+  lateNight:    { labelKey: 'schedBadgeLateNight',    cls: 'bg-violet-50 text-violet-700 border-violet-200' },
+  lowEnergy:    { labelKey: 'schedBadgeLowEnergy',    cls: 'bg-slate-50 text-slate-600 border-slate-200' },
+  socialDinner: { labelKey: 'schedBadgeSocialDinner', cls: 'bg-teal-50 text-teal-700 border-teal-200' },
+}
+
+function DayScheduleBadge({ level, tags, t }) {
+  const levelBadge =
+    level === 'very-busy' ? { label: t('schedBadgeVeryBusy'), cls: 'bg-orange-100 text-orange-700 border-orange-200' }
+    : level === 'busy'    ? { label: t('schedBadgeBusy'),     cls: 'bg-amber-100 text-amber-700 border-amber-200' }
+    : level === 'light'   ? { label: t('schedBadgeLight'),    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+    : null
+
+  if (!levelBadge && (!tags || tags.length === 0)) return null
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-1">
+      {levelBadge && (
+        <span className={`rounded-full border px-2 py-0.5 text-[0.6rem] font-semibold ${levelBadge.cls}`}>
+          {levelBadge.label}
+        </span>
+      )}
+      {(tags || []).map(tag => {
+        const cfg = SCHED_TAG_BADGE[tag]
+        if (!cfg) return null
+        return (
+          <span key={tag} className={`rounded-full border px-2 py-0.5 text-[0.6rem] font-medium ${cfg.cls}`}>
+            {t(cfg.labelKey)}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+function generateScheduleReason(meal, daySchedule, lang) {
+  if (!daySchedule) return null
+  const zh = lang === 'zh'
+  const { level, tags } = daySchedule
+  const parts = []
+
+  if (level === 'very-busy') {
+    parts.push(zh
+      ? `今天日程非常繁忙，Eshi 优先选择了准备时间短、操作最简单的餐食，减少烹饪压力。`
+      : `With a very busy schedule today, Eshi picked a quick, minimal-prep meal to keep cooking stress low.`)
+  } else if (level === 'busy') {
+    parts.push(zh
+      ? `今天日程较忙，Eshi 为您选择了快手、少步骤的餐食，确保您仍能好好吃饭。`
+      : `With a busy day ahead, this meal was chosen for its speed and simplicity — still nourishing, just low-fuss.`)
+  } else if (level === 'light') {
+    parts.push(zh
+      ? `今天日程轻松，Eshi 为您搭配了更完整、更滋补的膳食，适合慢慢享用。`
+      : `With a lighter schedule today, this meal is more complete and nourishing — great for taking your time.`)
+  }
+
+  if ((tags || []).includes('workout')) {
+    parts.push(zh
+      ? `今天是运动日，这份餐食含有更多蛋白质，帮助肌肉修复与体能恢复。`
+      : `Since today is a workout day, this meal is higher in protein to support muscle recovery.`)
+  }
+  if ((tags || []).includes('lateNight') || (tags || []).includes('lowEnergy')) {
+    parts.push(zh
+      ? `考虑到今天精力不足或有熬夜情况，推荐温热、容易消化的食物，轻养脾胃。`
+      : `With low energy or a late night, this warm and easy-to-digest meal is gentle on your system.`)
+  }
+  if ((tags || []).includes('socialDinner')) {
+    parts.push(zh
+      ? `今天有聚餐安排，早餐和午餐保持清淡，为晚间聚餐留出空间。`
+      : `Since you have a social dinner today, earlier meals are kept lighter to balance the day.`)
+  }
+
+  if (parts.length === 0) {
+    parts.push(zh
+      ? `这道餐食符合您的个人体质与今日节奏，搭配自然、温和滋补。`
+      : `This meal fits your wellness profile and today's rhythm — balanced and naturally nourishing.`)
+  }
+
+  return parts.join(' ')
+}
+
 // ─── Meal Detail Modal ─────────────────────────────────────────────────────────
 
-function MealDetailModal({ meal, onClose, t, lang }) {
+function MealDetailModal({ meal, daySchedule, onClose, t, lang }) {
   const labelColor = MEAL_LABEL_COLOR[meal.meal_type] || MEAL_LABEL_COLOR.breakfast
   const tags = parseTags(meal.tags)
   const diffKey = difficultyKey(meal.difficulty)
@@ -643,13 +584,33 @@ function MealDetailModal({ meal, onClose, t, lang }) {
             </div>
           )}
 
-          {/* Why recommended */}
+          {/* Why recommended (AI-generated) */}
           {meal.why_recommended && (
             <div className="rounded-[1rem] border border-primary/15 bg-primary-soft/60 px-4 py-3.5">
               <p className="mb-1 text-xs font-semibold text-primary">{t('mealDetailWhy')}</p>
               <p className="text-sm leading-relaxed text-ink">{meal.why_recommended}</p>
             </div>
           )}
+
+          {/* Schedule-aware explanation */}
+          {(() => {
+            const reason = generateScheduleReason(meal, daySchedule, lang)
+            if (!reason) return null
+            const isHighIntensity = daySchedule?.level === 'very-busy' || daySchedule?.level === 'busy'
+            return (
+              <div className={[
+                'mt-3 rounded-[1rem] border px-4 py-3.5',
+                isHighIntensity
+                  ? 'border-amber-200 bg-amber-50'
+                  : 'border-emerald-200 bg-emerald-50',
+              ].join(' ')}>
+                <p className={`mb-1 text-xs font-semibold ${isHighIntensity ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {t('mealWhySchedContext')}
+                </p>
+                <p className="text-sm leading-relaxed text-ink">{reason}</p>
+              </div>
+            )
+          })()}
         </div>
       </div>
     </div>
@@ -725,6 +686,7 @@ function SwapMealItem({ meal, swapFrom, onSwap, onSetSwapFrom, onEdit, onDelete,
 
 export default function MealPlanPage() {
   const { t, lang } = useLanguage()
+  const { schedule } = useScheduleContext()
   const [meals, setMeals] = useState([])
   const [ingredients, setIngredients] = useState([])
   const [profile, setProfile] = useState(null)
@@ -871,6 +833,14 @@ export default function MealPlanPage() {
         </div>
       )}
 
+      {/* Schedule-aware plan summary — always visible */}
+      <div className="mb-8 rounded-[1.25rem] border border-primary/15 bg-primary-soft/50 px-6 py-4 shadow-card">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary/70">
+          {t('mealPlanSchedSummaryTitle')}
+        </p>
+        <p className="text-sm leading-relaxed text-ink">{t('mealPlanSchedSummaryBody')}</p>
+      </div>
+
       {planSummary && (
         <div className="mb-8 rounded-[1.25rem] border border-primary/15 bg-primary-soft/60 px-6 py-5 shadow-card">
           <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-primary/70">
@@ -884,7 +854,12 @@ export default function MealPlanPage() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3 lg:gap-8 xl:grid-cols-4">
         {DAYS.map(day => (
           <Card key={day}>
-            <h3 className="mb-4 font-display text-lg font-semibold tracking-tight text-primary">{t(day)}</h3>
+            <h3 className="mb-2 font-display text-lg font-semibold tracking-tight text-primary">{t(day)}</h3>
+            <DayScheduleBadge
+              level={schedule[day]?.level || 'normal'}
+              tags={schedule[day]?.tags || []}
+              t={t}
+            />
             {byDay[day].length === 0 ? (
               <p className="text-sm italic text-muted">{t('noMeals')}</p>
             ) : (
@@ -937,6 +912,7 @@ export default function MealPlanPage() {
       {selectedMeal && (
         <MealDetailModal
           meal={selectedMeal}
+          daySchedule={schedule[selectedMeal.day_of_week]}
           onClose={() => setSelectedMeal(null)}
           t={t}
           lang={lang}

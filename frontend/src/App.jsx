@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { LanguageProvider } from './contexts/LanguageContext'
+import { CommunityProvider } from './contexts/CommunityContext'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import MealPlanPage from './pages/MealPlanPage'
@@ -11,6 +12,7 @@ import ProfilePage from './pages/ProfilePage'
 export default function App() {
   return (
     <LanguageProvider>
+      <CommunityProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -23,6 +25,7 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+      </CommunityProvider>
     </LanguageProvider>
   )
 }
