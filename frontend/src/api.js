@@ -1,4 +1,12 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+/** Base URL for JSON API — always ends with `/api` so paths match Express mounts. */
+function normalizeApiBase() {
+  const raw = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
+  if (!raw) return 'http://localhost:3001/api'
+  if (/\/api$/i.test(raw)) return raw
+  return `${raw}/api`
+}
+
+export const API = normalizeApiBase()
 
 export async function getIngredients() {
   const res = await fetch(`${API}/ingredients`);
@@ -61,14 +69,11 @@ export async function generateMealPlanAI() {
   try {
     const res = await fetch(`${API}/meal-plan/generate-ai`, { method: 'POST' });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(body.error || `AI generation failed (${res.status})`);
-    }
-    return body;
-  } catch (e) {
-    if (e.message.startsWith('AI generation') || e.message.startsWith('ANTHROPIC_API_KEY')) throw e;
-    throw new Error('Cannot connect to backend. Please run npm run dev and ensure the server starts.');
+    if (res.ok) return body
+  } catch {
+    /* network / offline — fall through to rule-based plan */
   }
+  return generateMealPlan()
 }
 
 export async function generateMealPlan() {
